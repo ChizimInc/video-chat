@@ -57,7 +57,7 @@ export default function CreateChat() {
             type="text"
             readOnly
             value={`${window.location.origin}/chat/${chatId}`}
-            className="mt-2 p-2 w-full text-black rounded-lg"
+            className="mt-2 p-2 w-full text-white rounded-lg"
           />
           <button
             onClick={() => navigator.clipboard.writeText(`${window.location.origin}/chat/${chatId}`)}

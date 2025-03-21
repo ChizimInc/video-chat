@@ -11,6 +11,7 @@ export default function ChatRoom() {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<{ user: string; text: string }[]>([]);
   const [message, setMessage] = useState("");
+  const [users, setUsers] = useState<string[]>([]);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
@@ -53,6 +54,10 @@ export default function ChatRoom() {
 
     socket.emit("join-room", chatId);
 
+    socket.on("users-update", (userList) => {
+      setUsers(userList);
+    });
+
     socket.on("offer", async (offer) => {
       if (peerConnection.current) {
         await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
@@ -74,7 +79,6 @@ export default function ChatRoom() {
       }
     });
 
-    // Eveniment pentru chat text
     socket.on("chat-message", (msg) => {
       setMessages((prevMessages) => [...prevMessages, msg]);
     });
@@ -85,6 +89,7 @@ export default function ChatRoom() {
       socket.off("answer");
       socket.off("ice-candidate");
       socket.off("chat-message");
+      socket.off("users-update");
     };
   }, [chatId]);
 
@@ -97,13 +102,30 @@ export default function ChatRoom() {
     }
   };
 
-  // Trimiterea unui mesaj text
+  const leaveChat = () => {
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
+    }
+    socket.emit("leave-room", chatId);
+    window.location.href = "/";
+  };
+
   const sendMessage = () => {
     if (message.trim() !== "") {
       const msg = { user: "You", text: message };
       setMessages((prevMessages) => [...prevMessages, msg]);
       socket.emit("chat-message", { chatId, message });
       setMessage("");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      sendMessage();
     }
   };
 
@@ -115,15 +137,27 @@ export default function ChatRoom() {
         <video ref={remoteVideoRef} autoPlay playsInline className="w-64 h-48 bg-black" />
       </div>
       {!isConnected && (
-        <button
-          onClick={startCall}
-          className="mt-6 px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600"
-        >
-          Start Call
-        </button>
+        <div className="space-x-4">
+          <button
+            onClick={startCall}
+            className="mt-6 px-6 py-2 bg-green-500 rounded-lg hover:bg-green-600"
+          >Start Call</button>
+          <button
+            onClick={leaveChat}
+            className="mt-6 px-6 py-2 bg-red-500 rounded-lg hover:bg-red-600"
+          >Leave chat</button>
+        </div>
       )}
 
-      {/* Chat Box */}
+      <div className="w-96 mt-6 p-4 bg-gray-800 rounded-lg">
+        <h2 className="text-lg font-bold mb-2">Connected Users</h2>
+        <ul className="h-24 overflow-y-auto border-b border-gray-600 mb-2 p-2">
+          {users.map((user, index) => (
+            <li key={index} className="text-sm">{user}</li>
+          ))}
+        </ul>
+      </div>
+
       <div className="w-96 mt-6 p-4 bg-gray-800 rounded-lg">
         <h2 className="text-lg font-bold mb-2">Chat</h2>
         <div className="h-40 overflow-y-auto border-b border-gray-600 mb-2 p-2">
@@ -137,8 +171,9 @@ export default function ChatRoom() {
           <input
             type="text"
             value={message}
+            onKeyDown={handleKeyDown}
             onChange={(e) => setMessage(e.target.value)}
-            className="flex-1 p-2 text-black rounded-l-lg"
+            className="flex-1 p-2 text-white rounded-l-lg"
             placeholder="Type a message..."
           />
           <button

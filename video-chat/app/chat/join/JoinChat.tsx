@@ -24,7 +24,7 @@ export default function JoinChat() {
         placeholder="Enter Chat ID"
         value={chatId}
         onChange={(e) => setChatId(e.target.value)}
-        className="p-2 text-black rounded-lg mb-4 w-80"
+        className="p-2 text-white rounded-lg mb-4 w-80 border-amber-300"
       />
       {error && <p className="text-red-500">{error}</p>}
       <button
